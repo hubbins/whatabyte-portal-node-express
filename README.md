@@ -1,3 +1,6 @@
+https://auth0.com/blog/create-a-simple-and-secure-node-express-app/
+
+
 ## Create Simple, Secure, and Stylish Node Apps with Express
 
 This project is connected with two blog posts from Auth0 where you learn how to create a simple yet stylish app using Node and Express and how to secure it using Passport.js and Auth0.
