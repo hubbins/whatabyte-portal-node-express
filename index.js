@@ -29,7 +29,7 @@ const session = {
   secret: process.env.SESSION_SECRET,
   cookie: {},
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
 };
 
 if (app.get("env") === "production") {
@@ -46,7 +46,7 @@ const strategy = new Auth0Strategy(
     domain: process.env.AUTH0_DOMAIN,
     clientID: process.env.AUTH0_CLIENT_ID,
     clientSecret: process.env.AUTH0_CLIENT_SECRET,
-    callbackURL: process.env.AUTH0_CALLBACK_URL
+    callbackURL: process.env.AUTH0_CALLBACK_URL,
   },
   function (accessToken, refreshToken, extraParams, profile, done) {
     /**
@@ -58,9 +58,12 @@ const strategy = new Auth0Strategy(
      * profile has all the information from the user
      */
     const info = {
-      "profile": profile,
-      "id_token": extraParams.id_token
+      profile: profile,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      id_token: extraParams.id_token,
     };
+
     return done(null, info);
   }
 );
@@ -114,26 +117,24 @@ app.get("/", (req, res) => {
 app.get("/user", secured, (req, res, next) => {
   const { _raw, _json, ...userProfile } = req.user.profile;
 
-  let options = {
-    method: 'GET',
+  const options = {
+    method: "GET",
     url: "https://auth0-validate-jwt.glitch.me/api/private",
-    headers: { authorization: 'Bearer ' + req.user.id_token }
+    headers: { authorization: "Bearer " + req.user.access_token },
   };
 
   request(options, function (error, response, body) {
     if (error) throw new Error(error);
-  
-    console.log(body);
+
     let payload = JSON.parse(body);
 
     res.render("user", {
       title: "Profile",
       userProfile: userProfile,
       userName: payload.name,
-      mstarId: payload.mstarId
+      mstarId: payload.mstarId,
     });
   });
-
 });
 
 /**
@@ -143,3 +144,48 @@ app.get("/user", secured, (req, res, next) => {
 app.listen(port, () => {
   console.log(`Listening to requests on http://${process.env.DOMAIN}:${port}`);
 });
+
+//------------------------
+/*
+app.get("/user", secured, (req, res, next) => {
+  const { _raw, _json, ...userProfile } = req.user.profile;
+
+  let options = {
+    method: "POST",
+    url: `https://${process.env.AUTH0_DOMAIN}/oauth/token`,
+    json: true,
+    body: {
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: process.env.AUTH0_CLIENT_SECRET,
+      audience: process.env.API_AUDIENCE,
+      grant_type: "client_credentials",
+    },
+  };
+
+  request(options, function (error, response, body) {
+    if (error) throw new Error(error);
+
+    const accessToken = body.access_token;
+
+    let options = {
+      method: "GET",
+      url: "https://auth0-validate-jwt.glitch.me/api/private",
+      headers: { authorization: "Bearer " + req.user.id_token },
+      //headers: { authorization: "Bearer " + accessToken },
+    };
+
+    request(options, function (error, response, body) {
+      if (error) throw new Error(error);
+
+      let payload = JSON.parse(body);
+
+      res.render("user", {
+        title: "Profile",
+        userProfile: userProfile,
+        userName: payload.name,
+        mstarId: payload.mstarId,
+      });
+    });
+  });
+});
+*/
