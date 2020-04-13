@@ -9,6 +9,7 @@ const path = require("path");
 const expressSession = require("express-session");
 const passport = require("passport");
 const Auth0Strategy = require("passport-auth0");
+const request = require("request");
 const authRouter = require("./auth");
 
 require("dotenv").config();
@@ -47,7 +48,7 @@ const strategy = new Auth0Strategy(
     clientSecret: process.env.AUTH0_CLIENT_SECRET,
     callbackURL: process.env.AUTH0_CALLBACK_URL
   },
-  function(accessToken, refreshToken, extraParams, profile, done) {
+  function (accessToken, refreshToken, extraParams, profile, done) {
     /**
      * Access tokens are used to authorize users to an API
      * (resource server)
@@ -56,7 +57,11 @@ const strategy = new Auth0Strategy(
      * extraParams.id_token has the JSON Web Token
      * profile has all the information from the user
      */
-    return done(null, profile);
+    const info = {
+      "profile": profile,
+      "id_token": extraParams.id_token
+    };
+    return done(null, info);
   }
 );
 
@@ -107,11 +112,28 @@ app.get("/", (req, res) => {
 });
 
 app.get("/user", secured, (req, res, next) => {
-  const { _raw, _json, ...userProfile } = req.user;
-  res.render("user", {
-    title: "Profile",
-    userProfile: userProfile
+  const { _raw, _json, ...userProfile } = req.user.profile;
+
+  let options = {
+    method: 'GET',
+    url: "https://auth0-validate-jwt.glitch.me/api/private",
+    headers: { authorization: 'Bearer ' + req.user.id_token }
+  };
+
+  request(options, function (error, response, body) {
+    if (error) throw new Error(error);
+  
+    console.log(body);
+    let payload = JSON.parse(body);
+
+    res.render("user", {
+      title: "Profile",
+      userProfile: userProfile,
+      userName: payload.name,
+      mstarId: payload.mstarId
+    });
   });
+
 });
 
 /**
