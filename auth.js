@@ -35,7 +35,9 @@ router.get("/callback", (req, res, next) => {
       if (err) {
         return next(err);
       }
+
       console.log("In callback");
+
       const returnTo = req.session.returnTo;
       delete req.session.returnTo;
       res.redirect(returnTo || "/");
@@ -45,13 +47,14 @@ router.get("/callback", (req, res, next) => {
 
 router.get("/logout", (req, res) => {
   req.logOut();
+  let onGlitch = process.env.GLITCH === "1";
 
   console.log("In logout");
 
-  let returnTo = req.protocol + "://" + req.hostname;
+  let returnTo = (onGlitch ? "https" : req.protocol) + "://" + req.hostname;
   const port = req.connection.localPort;
 
-  if (port !== undefined && port !== 80 && port !== 443) {
+  if (port !== undefined && port !== 80 && port !== 443 && !onGlitch) {
     returnTo =
       process.env.NODE_ENV === "production"
         ? `${returnTo}/`
